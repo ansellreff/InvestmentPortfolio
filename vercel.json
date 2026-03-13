@@ -1,0 +1,34 @@
+{
+  "buildCommand": "npx prisma generate && next build",
+  "devCommand": "next dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["sin1"],
+  "env": {
+    "NEXTAUTH_URL": {
+      "description": "The URL of your deployment",
+      "value": ""
+    },
+    "NEXTAUTH_SECRET": {
+      "description": "The secret used to encrypt tokens (run: openssl rand -base64 32)",
+      "value": ""
+    },
+    "DATABASE_URL": {
+      "description": "PostgreSQL connection string (use Vercel Postgres or Supabase)",
+      "value": ""
+    },
+    "FINNHUB_API_KEY": {
+      "description": "Finnhub API key for US stock data (optional)",
+      "required": false
+    },
+    "COINGECKO_API_KEY": {
+      "description": "CoinGecko API key for crypto data (optional)",
+      "required": false
+    }
+  },
+  "build": {
+    "env": {
+      "PRISMA_GENERATE_DATAPROXY": "1"
+    }
+  }
+}
