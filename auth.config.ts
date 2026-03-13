@@ -18,6 +18,7 @@ export const authConfig: Partial<NextAuthConfig> = {
         session.user.name = token.name as string
         session.user.email = token.email as string
         session.user.image = token.image as string | null
+        session.user.isAdmin = token.isAdmin as boolean
       }
       return session
     },
@@ -28,6 +29,7 @@ export const authConfig: Partial<NextAuthConfig> = {
         token.name = user.name
         token.email = user.email
         token.image = user.image
+        token.isAdmin = user.isAdmin
       }
       return token
     },

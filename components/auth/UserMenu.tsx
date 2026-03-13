@@ -5,7 +5,7 @@ import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { LogOut, Settings, User, LayoutDashboard, UserCircle } from "lucide-react"
+import { LogOut, Settings, User, LayoutDashboard, UserCircle, Shield } from "lucide-react"
 
 export function UserMenu() {
   const { data: session, status } = useSession()
@@ -119,6 +119,19 @@ export function UserMenu() {
               <UserCircle className="h-4 w-4" />
               <span>My Profile</span>
             </button>
+
+            {session?.user?.isAdmin && (
+              <button
+                onClick={() => {
+                  router.push("/admin")
+                  setIsOpen(false)
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-blue-600 dark:text-blue-400"
+              >
+                <Shield className="h-4 w-4" />
+                <span>Admin Panel</span>
+              </button>
+            )}
 
             <button
               onClick={() => {
