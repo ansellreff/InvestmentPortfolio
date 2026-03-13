@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Calendar, User, Mail, Lock, AlertCircle, CheckCircle, ArrowRight, ArrowLeft } from "lucide-react"
+import { Calendar, User, Mail, Lock, AlertCircle, CheckCircle, ArrowRight, ArrowLeft, Eye, EyeOff } from "lucide-react"
 
 interface FormData {
   name: string
@@ -62,6 +62,8 @@ export default function SignUpPage() {
 
   const [errors, setErrors] = useState<FormErrors>({})
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const validateStep1 = () => {
     const newErrors: FormErrors = {}
@@ -333,16 +335,25 @@ export default function SignUpPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className={errors.password ? "border-red-500" : ""}
-                  disabled={isLoading}
-                  autoComplete="new-password"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className={errors.password ? "border-red-500" : ""}
+                    disabled={isLoading}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
 
                 {/* Password Strength */}
@@ -367,16 +378,25 @@ export default function SignUpPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className={errors.confirmPassword ? "border-red-500" : ""}
-                  disabled={isLoading}
-                  autoComplete="new-password"
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className={errors.confirmPassword ? "border-red-500" : ""}
+                    disabled={isLoading}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword}</p>}
               </div>
             </>
