@@ -10,18 +10,11 @@ const signupSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required"),
-  dateOfBirth: z.union([z.string(), z.null()]).optional(),
-  phone: z.union([z.string(), z.null()]).optional(),
-  location: z.union([z.string(), z.null()]).optional(),
-  timezone: z.union([z.string(), z.null()]).optional(),
-}).transform((data) => ({
-  ...data,
-  // Convert empty strings to null for optional fields
-  dateOfBirth: data.dateOfBirth && data.dateOfBirth.trim() !== "" ? data.dateOfBirth : null,
-  phone: data.phone && data.phone.trim() !== "" ? data.phone : null,
-  location: data.location && data.location.trim() !== "" ? data.location : null,
-  timezone: data.timezone && data.timezone.trim() !== "" ? data.timezone : null,
-}))
+  dateOfBirth: z.string().optional(),
+  phone: z.string().optional(),
+  location: z.string().optional(),
+  timezone: z.string().optional(),
+})
 
 export async function POST(req: NextRequest) {
   // Rate limiting - prevent signup abuse
@@ -35,7 +28,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { email, password, name, dateOfBirth, phone, location, timezone } = signupSchema.parse(body)
+    const rawData = signupSchema.parse(body)
+
+    // Convert empty strings to null for optional fields
+    const cleanData = {
+      ...rawData,
+      dateOfBirth: rawData.dateOfBirth?.trim() || null,
+      phone: rawData.phone?.trim() || null,
+      location: rawData.location?.trim() || null,
+      timezone: rawData.timezone?.trim() || null,
+    }
+
+    const { email, password, name, dateOfBirth, phone, location, timezone } = cleanData
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
