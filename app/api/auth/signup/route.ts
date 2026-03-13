@@ -10,11 +10,18 @@ const signupSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required"),
-  dateOfBirth: z.string().optional(),
-  phone: z.string().optional(),
-  location: z.string().optional(),
-  timezone: z.string().optional(),
-})
+  dateOfBirth: z.union([z.string(), z.null()]).optional(),
+  phone: z.union([z.string(), z.null()]).optional(),
+  location: z.union([z.string(), z.null()]).optional(),
+  timezone: z.union([z.string(), z.null()]).optional(),
+}).transform((data) => ({
+  ...data,
+  // Convert empty strings to null for optional fields
+  dateOfBirth: data.dateOfBirth && data.dateOfBirth.trim() !== "" ? data.dateOfBirth : null,
+  phone: data.phone && data.phone.trim() !== "" ? data.phone : null,
+  location: data.location && data.location.trim() !== "" ? data.location : null,
+  timezone: data.timezone && data.timezone.trim() !== "" ? data.timezone : null,
+}))
 
 export async function POST(req: NextRequest) {
   // Rate limiting - prevent signup abuse

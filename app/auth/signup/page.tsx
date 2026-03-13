@@ -29,6 +29,11 @@ interface FormErrors {
   dateOfBirth?: string
 }
 
+interface ValidationError {
+  path: string[]
+  message: string
+}
+
 interface SignupData {
   user?: {
     id: string
@@ -38,6 +43,7 @@ interface SignupData {
   message?: string
   requireVerification?: boolean
   error?: string
+  details?: ValidationError[]
 }
 
 export default function SignUpPage() {
@@ -139,7 +145,13 @@ export default function SignUpPage() {
       const data: SignupData = await response.json()
 
       if (!response.ok) {
-        setError(data.error || "Something went wrong")
+        // Show detailed validation errors if available
+        if (data.details && data.details.length > 0) {
+          const errorMessages = data.details.map(d => d.message).join(", ")
+          setError(`${data.error}: ${errorMessages}`)
+        } else {
+          setError(data.error || "Something went wrong")
+        }
         return
       }
 
