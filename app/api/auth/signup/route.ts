@@ -10,10 +10,10 @@ const signupSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required"),
-  dateOfBirth: z.string().optional(),
-  phone: z.string().optional(),
-  location: z.string().optional(),
-  timezone: z.string().optional(),
+  dateOfBirth: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
+  timezone: z.string().nullable().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -28,15 +28,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
+    logger.info("[Signup] Received data:", { email: body.email, name: body.name })
+
     const rawData = signupSchema.parse(body)
+    logger.info("[Signup] Validated data:", { ...rawData, password: "***" })
 
     // Convert empty strings to null for optional fields
     const cleanData = {
       ...rawData,
-      dateOfBirth: rawData.dateOfBirth?.trim() || null,
-      phone: rawData.phone?.trim() || null,
-      location: rawData.location?.trim() || null,
-      timezone: rawData.timezone?.trim() || null,
+      dateOfBirth: (rawData.dateOfBirth && rawData.dateOfBirth.trim()) ? rawData.dateOfBirth.trim() : null,
+      phone: (rawData.phone && rawData.phone.trim()) ? rawData.phone.trim() : null,
+      location: (rawData.location && rawData.location.trim()) ? rawData.location.trim() : null,
+      timezone: (rawData.timezone && rawData.timezone.trim()) ? rawData.timezone.trim() : null,
     }
 
     const { email, password, name, dateOfBirth, phone, location, timezone } = cleanData
@@ -61,52 +64,76 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await hash(password, 12)
 
     // Create user with profile data
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        phone,
-        location,
-        timezone,
-        // First user becomes admin automatically
-        isAdmin: isFirstUser,
-        role: isFirstUser ? 'admin' : 'user',
-      },
-    })
+    let user
+    try {
+      user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          phone: phone || null,
+          location: location || null,
+          timezone: timezone || null,
+          // First user becomes admin automatically
+          isAdmin: isFirstUser,
+          role: isFirstUser ? 'admin' : 'user',
+        },
+      })
+    } catch (dbError: any) {
+      logger.error("[Signup] Database error creating user:", dbError)
+      return NextResponse.json(
+        { error: "Failed to create user account", details: dbError.message },
+        { status: 500 }
+      )
+    }
 
     // Create default preferences
-    await prisma.userPreference.create({
-      data: {
-        userId: user.id,
-        defaultCurrency: "USD",
-        theme: "system",
-        language: "en",
-      },
-    })
+    try {
+      await prisma.userPreference.create({
+        data: {
+          userId: user.id,
+          defaultCurrency: "USD",
+          theme: "system",
+          language: "en",
+        },
+      })
+    } catch (prefError: any) {
+      logger.error("[Signup] Database error creating preferences:", prefError)
+      // Continue anyway, this is not critical
+    }
 
     // Log activity
-    await prisma.activityLog.create({
-      data: {
-        userId: user.id,
-        action: "USER_REGISTERED",
-        description: "User account created",
-      },
-    })
+    try {
+      await prisma.activityLog.create({
+        data: {
+          userId: user.id,
+          action: "USER_REGISTERED",
+          description: "User account created",
+        },
+      })
+    } catch (logError: any) {
+      logger.error("[Signup] Database error creating activity log:", logError)
+      // Continue anyway, this is not critical
+    }
 
     // Create email verification token
     const token = crypto.randomBytes(32).toString('hex')
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
-    await prisma.emailVerificationToken.create({
-      data: {
-        userId: user.id,
-        email: user.email,
-        token,
-        expires,
-      },
-    })
+    try {
+      await prisma.emailVerificationToken.create({
+        data: {
+          userId: user.id,
+          email: user.email,
+          token,
+          expires,
+        },
+      })
+    } catch (tokenError: any) {
+      logger.error("[Signup] Database error creating verification token:", tokenError)
+      // Continue anyway, user is created
+    }
 
     // Send verification email
     try {
