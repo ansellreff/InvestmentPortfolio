@@ -52,8 +52,6 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-  const [showVerification, setShowVerification] = useState(false)
-  const [userEmail, setUserEmail] = useState("")
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -155,17 +153,11 @@ export default function SignUpPage() {
         return
       }
 
-      // Check if email verification is required
-      if (data.requireVerification && data.user) {
-        setUserEmail(data.user.email)
-        setShowVerification(true)
-        setSuccess(data.message || "Account created successfully! Please check your email to verify your account.")
-      } else {
-        setSuccess("Account created successfully! Redirecting to sign in...")
-        setTimeout(() => {
-          router.push("/auth/signin?registered=true")
-        }, 2000)
-      }
+      // Account created successfully, redirect to sign in
+      setSuccess("Account created successfully! Redirecting to sign in...")
+      setTimeout(() => {
+        router.push("/auth/signin?registered=true")
+      }, 1500)
     } catch {
       setError("Something went wrong. Please try again.")
     } finally {
@@ -200,78 +192,6 @@ export default function SignUpPage() {
     if (score <= 3) return { score, label: "Fair", color: "bg-yellow-500" }
     if (score <= 4) return { score, label: "Good", color: "bg-blue-500" }
     return { score, label: "Strong", color: "bg-green-500" }
-  }
-
-  // Show verification screen after signup
-  if (showVerification) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4 flex items-center justify-center">
-        <Card className="w-full max-w-lg shadow-xl">
-          <CardHeader className="text-center pb-4">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400">
-              <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
-            <CardDescription>We've sent a verification link to your email</CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-5">
-            <div className="text-center space-y-2">
-              <p className="text-slate-600 dark:text-slate-400">
-                We've sent a verification email to:
-              </p>
-              <p className="font-medium text-lg bg-slate-100 dark:bg-slate-800 py-2 px-4 rounded-md">
-                {userEmail}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">What's next?</h4>
-              <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                <li>1. Check your email inbox (and spam folder)</li>
-                <li>2. Click the verification link in the email</li>
-                <li>3. Sign in to your account</li>
-              </ul>
-            </div>
-
-            <div className="text-center space-y-3">
-              <p className="text-sm text-slate-500">
-                Didn't receive the email? Check your spam folder or
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowVerification(false)
-                  setSuccess("")
-                  // Resend verification
-                  fetch('/api/auth/verify-email', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: userEmail }),
-                  }).then(() => {
-                    alert('Verification email resent!')
-                  })
-                }}
-                className="w-full"
-              >
-                Resend Verification Email
-              </Button>
-            </div>
-          </CardContent>
-
-          <CardFooter>
-            <p className="text-sm text-slate-600 dark:text-slate-400 w-full text-center">
-              Already verified?{" "}
-              <Link href="/auth/signin" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
-                Sign in
-              </Link>
-            </p>
-          </CardFooter>
-        </Card>
-      </div>
-    )
   }
 
   return (
