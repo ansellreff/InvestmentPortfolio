@@ -1,0 +1,14 @@
+// Production Schema for Vercel/Neon (PostgreSQL)
+// This file is only used on Vercel
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Copy all models from main schema...
+// For now, let me create a simpler approach
