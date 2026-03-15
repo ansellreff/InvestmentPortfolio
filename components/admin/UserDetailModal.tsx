@@ -30,6 +30,7 @@ import {
   XCircle,
   Key,
 } from 'lucide-react'
+import { Captcha } from '@/components/auth/Captcha'
 
 interface UserDetailModalProps {
   open: boolean
@@ -107,6 +108,7 @@ export function UserDetailModal({ open, onOpenChange, userId, onRefresh }: UserD
   const [newPassword, setNewPassword] = useState('')
   const [resettingPassword, setResettingPassword] = useState(false)
   const [resetSuccess, setResetSuccess] = useState('')
+  const [captchaVerified, setCaptchaVerified] = useState(false)
 
   useEffect(() => {
     if (open && userId) {
@@ -165,6 +167,10 @@ export function UserDetailModal({ open, onOpenChange, userId, onRefresh }: UserD
     if (!userId) return
     if (newPassword.length < 8) {
       setError('Password must be at least 8 characters')
+      return
+    }
+    if (!captchaVerified) {
+      setError('Please complete the CAPTCHA verification')
       return
     }
 
@@ -371,6 +377,13 @@ export function UserDetailModal({ open, onOpenChange, userId, onRefresh }: UserD
                         minLength={8}
                       />
                     </div>
+                    <div>
+                      <label className="text-sm font-medium">Security Verification</label>
+                      <Captcha
+                        onVerified={setCaptchaVerified}
+                        onReset={() => setCaptchaVerified(false)}
+                      />
+                    </div>
                     {resetSuccess && (
                       <p className="text-sm text-green-600">{resetSuccess}</p>
                     )}
@@ -378,7 +391,7 @@ export function UserDetailModal({ open, onOpenChange, userId, onRefresh }: UserD
                       <Button
                         size="sm"
                         onClick={handlePasswordReset}
-                        disabled={resettingPassword || newPassword.length < 8}
+                        disabled={resettingPassword || newPassword.length < 8 || !captchaVerified}
                       >
                         {resettingPassword ? 'Resetting...' : 'Reset Password'}
                       </Button>
@@ -389,6 +402,7 @@ export function UserDetailModal({ open, onOpenChange, userId, onRefresh }: UserD
                           setShowPasswordReset(false)
                           setNewPassword('')
                           setError('')
+                          setCaptchaVerified(false)
                         }}
                       >
                         Cancel

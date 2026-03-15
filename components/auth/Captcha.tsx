@@ -59,8 +59,9 @@ export function Captcha({ onVerified, onReset }: CaptchaProps) {
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      e.preventDefault()
       if (isVerified) {
         generateCaptcha()
       } else {
@@ -91,7 +92,7 @@ export function Captcha({ onVerified, onReset }: CaptchaProps) {
           type="number"
           value={answer}
           onChange={handleAnswerChange}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyDown}
           onBlur={verifyCaptcha}
           placeholder="Your answer"
           className={`flex-1 px-3 py-2 border rounded-md text-sm ${
