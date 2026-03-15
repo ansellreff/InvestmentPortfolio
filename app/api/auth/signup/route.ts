@@ -6,16 +6,19 @@ import { authRateLimit } from "@/lib/utils/rateLimit"
 import { logger } from "@/lib/utils/logger"
 
 // Helper to convert empty strings to null for optional fields
-const emptyStringToNull = (val: unknown) => (val === "" ? null : val)
+const emptyStringToNull = (val: string | null | undefined): string | null => {
+  if (!val || val === "") return null
+  return val
+}
 
 const signupSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required"),
-  dateOfBirth: z.string().transform(emptyStringToNull).nullable().optional(),
-  phone: z.string().transform(emptyStringToNull).nullable().optional(),
-  location: z.string().transform(emptyStringToNull).nullable().optional(),
-  timezone: z.string().transform(emptyStringToNull).nullable().optional(),
+  dateOfBirth: z.string().optional().transform(emptyStringToNull),
+  phone: z.string().optional().transform(emptyStringToNull),
+  location: z.string().optional().transform(emptyStringToNull),
+  timezone: z.string().optional().transform(emptyStringToNull),
 })
 
 export async function POST(req: NextRequest) {
