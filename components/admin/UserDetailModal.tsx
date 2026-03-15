@@ -28,6 +28,7 @@ import {
   Crown,
   CheckCircle,
   XCircle,
+  Key,
 } from 'lucide-react'
 
 interface UserDetailModalProps {
@@ -102,6 +103,10 @@ export function UserDetailModal({ open, onOpenChange, userId, onRefresh }: UserD
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [deletingPortfolio, setDeletingPortfolio] = useState<string | null>(null)
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [resettingPassword, setResettingPassword] = useState(false)
+  const [resetSuccess, setResetSuccess] = useState('')
 
   useEffect(() => {
     if (open && userId) {
@@ -153,6 +158,43 @@ export function UserDetailModal({ open, onOpenChange, userId, onRefresh }: UserD
       setError('Failed to delete portfolio item')
     } finally {
       setDeletingPortfolio(null)
+    }
+  }
+
+  const handlePasswordReset = async () => {
+    if (!userId) return
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+
+    setResettingPassword(true)
+    setError('')
+    setResetSuccess('')
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setResetSuccess(data.message || 'Password reset successfully')
+        setNewPassword('')
+        setTimeout(() => {
+          setShowPasswordReset(false)
+          setResetSuccess('')
+        }, 3000)
+      } else {
+        setError(data.error || 'Failed to reset password')
+      }
+    } catch (err) {
+      setError('Failed to reset password')
+    } finally {
+      setResettingPassword(false)
     }
   }
 
@@ -296,6 +338,66 @@ export function UserDetailModal({ open, onOpenChange, userId, onRefresh }: UserD
                 </CardHeader>
               </Card>
             </div>
+
+            {/* Password Reset */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  Password Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!showPasswordReset ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPasswordReset(true)}
+                    className="w-full"
+                  >
+                    <Key className="h-4 w-4 mr-2" />
+                    Reset User Password
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium">New Password</label>
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password (min 8 characters)"
+                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        minLength={8}
+                      />
+                    </div>
+                    {resetSuccess && (
+                      <p className="text-sm text-green-600">{resetSuccess}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handlePasswordReset}
+                        disabled={resettingPassword || newPassword.length < 8}
+                      >
+                        {resettingPassword ? 'Resetting...' : 'Reset Password'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setShowPasswordReset(false)
+                          setNewPassword('')
+                          setError('')
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Preferences */}
             {preferences && (

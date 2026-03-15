@@ -14,6 +14,7 @@ const signupSchema = z.object({
   phone: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
   timezone: z.string().nullable().optional(),
+  captchaToken: z.string().optional(),
 })
 
 export async function POST(req: NextRequest) {

@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Calendar, User, Mail, Lock, AlertCircle, CheckCircle, ArrowRight, ArrowLeft, Eye, EyeOff } from "lucide-react"
+import { Calendar, User, Mail, Lock, AlertCircle, CheckCircle, ArrowRight, ArrowLeft, Eye, EyeOff, Shield } from "lucide-react"
+import { Captcha } from "@/components/auth/Captcha"
 
 interface FormData {
   name: string
@@ -70,6 +71,7 @@ export default function SignUpPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [captchaVerified, setCaptchaVerified] = useState(false)
 
   const validateStep1 = () => {
     const newErrors: FormErrors = {}
@@ -121,6 +123,12 @@ export default function SignUpPage() {
   const handleSubmit = async () => {
     if (!agreedToTerms) {
       setError("Please agree to the Terms of Service")
+      return
+    }
+
+    // Check CAPTCHA verification
+    if (!captchaVerified) {
+      setError("Please complete the CAPTCHA verification")
       return
     }
 
@@ -504,6 +512,18 @@ export default function SignUpPage() {
                     <span className="font-medium">{formData.timezone}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* CAPTCHA Verification */}
+              <div className="space-y-3 p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                  <Shield className="h-4 w-4" />
+                  <span>Security Verification - Solve the math problem</span>
+                </div>
+                <Captcha
+                  onVerified={setCaptchaVerified}
+                  onReset={() => setCaptchaVerified(false)}
+                />
               </div>
 
               <div className="space-y-3">

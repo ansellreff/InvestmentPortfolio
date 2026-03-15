@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, Shield } from "lucide-react"
+import { Captcha } from "@/components/auth/Captcha"
 
 export default function SignInPage() {
   const router = useRouter()
@@ -17,9 +18,17 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [captchaVerified, setCaptchaVerified] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Check CAPTCHA verification
+    if (!captchaVerified) {
+      setError("Please complete the CAPTCHA verification")
+      return
+    }
+
     setIsLoading(true)
     setError("")
 
@@ -103,6 +112,18 @@ export default function SignInPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
+
+            {/* CAPTCHA Verification */}
+            <div className="space-y-3 p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <Shield className="h-4 w-4" />
+                <span>Security Verification - Solve the math problem</span>
+              </div>
+              <Captcha
+                onVerified={setCaptchaVerified}
+                onReset={() => setCaptchaVerified(false)}
+              />
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
