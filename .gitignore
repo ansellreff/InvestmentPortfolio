@@ -54,3 +54,5 @@ prisma/dev.db
 .vscode/
 
 .vercel
+.env*.local
+.env.neon
