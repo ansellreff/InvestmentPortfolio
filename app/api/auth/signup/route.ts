@@ -5,21 +5,22 @@ import { z } from "zod"
 import { authRateLimit } from "@/lib/utils/rateLimit"
 import { logger } from "@/lib/utils/logger"
 
-// Helper to convert empty strings to null for optional fields
-const emptyStringToNull = (val: string | null | undefined): string | null => {
-  if (!val || val === "") return null
-  return val
-}
-
 const signupSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required"),
-  dateOfBirth: z.string().optional().transform(emptyStringToNull),
-  phone: z.string().optional().transform(emptyStringToNull),
-  location: z.string().optional().transform(emptyStringToNull),
-  timezone: z.string().optional().transform(emptyStringToNull),
+  // Optional fields - accept string, null, or undefined
+  dateOfBirth: z.union([z.string(), z.null(), z.undefined()]).optional(),
+  phone: z.union([z.string(), z.null(), z.undefined()]).optional(),
+  location: z.union([z.string(), z.null(), z.undefined()]).optional(),
+  timezone: z.union([z.string(), z.null(), z.undefined()]).optional(),
 })
+
+// Helper to clean optional fields (convert empty strings to null)
+function cleanOptionalField(val: string | null | undefined): string | null {
+  if (!val || val.trim() === "") return null
+  return val.trim()
+}
 
 export async function POST(req: NextRequest) {
   // Rate limiting - prevent signup abuse
@@ -39,6 +40,14 @@ export async function POST(req: NextRequest) {
     logger.info("[Signup] Validated data:", { ...rawData, password: "***" })
 
     const { email, password, name, dateOfBirth, phone, location, timezone } = rawData
+
+    // Clean optional fields (convert empty strings to null)
+    const cleanedData = {
+      dateOfBirth: cleanOptionalField(dateOfBirth),
+      phone: cleanOptionalField(phone),
+      location: cleanOptionalField(location),
+      timezone: cleanOptionalField(timezone),
+    }
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -65,10 +74,10 @@ export async function POST(req: NextRequest) {
         email,
         password: hashedPassword,
         name,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        phone,
-        location,
-        timezone,
+        dateOfBirth: cleanedData.dateOfBirth ? new Date(cleanedData.dateOfBirth) : null,
+        phone: cleanedData.phone,
+        location: cleanedData.location,
+        timezone: cleanedData.timezone,
         // First user becomes admin automatically
         isAdmin: isFirstUser,
         role: isFirstUser ? 'admin' : 'user',
