@@ -2,10 +2,30 @@
 
 A professional-grade SaaS web application for comparing investment instruments including gold, stocks, crypto, and other assets with real-time data, technical analysis, AI-powered forecasting, and user account management.
 
-![Version](https://img.shields.io/badge/version-3.2.0-blue)
+![Version](https://img.shields.io/badge/version-3.3.0-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-16.1-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+
+## 🆕 What's New in v3.3
+
+### 🔐 Authentication & Security Improvements
+- **Password Visibility Toggle**: Eye icon to show/hide password on all auth forms
+- **Admin Password Reset**: Admins can reset any user's password via admin panel (with CAPTCHA verification)
+- **Math CAPTCHA**: Simple 2-step verification for admin password reset
+- **Removed Email Verification**: Simplified signup - no email verification required
+- **Fixed Optional Fields**: Properly handles empty optional fields (date of birth, phone, location)
+
+### 🚀 Deployment & Database
+- **Neon PostgreSQL Integration**: Production-ready PostgreSQL database via Neon
+- **Vercel Deployment**: Optimized for Vercel with auto-deployment from GitHub
+- **Database Schema**: Migrated from SQLite (dev) to PostgreSQL (production)
+- **Environment Configuration**: Proper setup for Vercel environment variables
+
+### 🐛 Bug Fixes
+- **Fixed Signup Validation**: Optional fields now properly accept null/empty values
+- **Fixed TypeScript Build Errors**: Resolved Prisma schema issues on Vercel
+- **Fixed Session Persistence**: Sessions stay logged in (expected behavior) but are browser-specific
 
 ## 🆕 What's New in v3.2
 
@@ -14,6 +34,7 @@ A professional-grade SaaS web application for comparing investment instruments i
 - **Data Persistence**: All user data is consistently saved and stored in the database
 - **Account Isolation**: Each user has a private portfolio accessible only when logged in
 - **Cross-Device Sync**: Access your portfolio from any device after login
+- **Session Security**: Sessions are browser-specific - sharing the app URL won't share your account
 
 ### 👑 Enhanced Admin Panel
 - **User Detail Modal**: View comprehensive user information including profile, portfolio, watchlist, and activity
@@ -103,10 +124,14 @@ A professional-grade SaaS web application for comparing investment instruments i
 - **Secure Authentication**: NextAuth.js with bcrypt password hashing (12 rounds)
 - **Rich Profile Management**: Name, email, phone, location, birth date, bio, website
 - **Password Strength Indicator**: Visual feedback during registration
+- **Password Visibility Toggle**: Eye icon to show/hide password on all forms
+- **Optional Profile Fields**: Date of birth, phone, location are optional
 - **User Dashboard**: Personal dashboard with portfolio & watchlist overview
 - **Settings Page**: Comprehensive profile, preferences, security, and account management
 - **Persistent Data**: All data synced to cloud database
 - **Activity Logging**: Track user actions for security
+- **Session Management**: Stay logged in across browser restarts (30-day sessions)
+- **Browser-Specific Sessions**: Each browser/device has separate sessions - safe to share the app URL
 
 ### 📊 Real-Time Price Tracking
 - **Gold & Precious Metals**: Real-time spot prices from Metals Live API (~$5,000-$5,200 for gold)
@@ -392,20 +417,30 @@ GET /api/admin/export-database
 ## 🔐 Security & Data Persistence
 
 ### Data Persistence
-- **Cloud Database**: All user data is stored in a centralized database (SQLite dev / PostgreSQL production)
+- **Cloud Database**: All user data is stored in Neon PostgreSQL (production)
 - **Account Isolation**: Each user has a private portfolio accessible only when logged in
 - **Session Management**: Secure JWT-based sessions with 30-day expiration
 - **Auto-Sync**: Portfolio changes are automatically synced to the database
 - **Cross-Device Access**: Login from any device to access your portfolio
+- **Browser-Specific Sessions**: Your login is stored in your browser's cookies only
+- **Safe to Share**: When you share the app URL, others see their own login screen, not your account
+
+### How Session Sharing Works
+When you share the app URL with a friend:
+1. ✅ They see the Sign In / Sign Up page (not your dashboard)
+2. ✅ They need their own account to access the app
+3. ✅ Your session is private to your browser only
+4. ✅ Sessions are stored as HTTP-only cookies (not accessible via JavaScript)
 
 ### Security Features
 - **Password Hashing**: bcrypt with 12 rounds for secure password storage
-- **Rate Limiting**: API rate limiting to prevent abuse
-- **Input Validation**: All user inputs are validated and sanitized
+- **Rate Limiting**: API rate limiting to prevent abuse (5 attempts per 5 minutes for auth)
+- **Input Validation**: All user inputs are validated with Zod schema
 - **SQL Injection Protection**: Prisma ORM prevents SQL injection attacks
 - **Session Security**: HTTP-only cookies for session tokens
 - **Activity Logging**: All user actions are logged for security auditing
-- **Email Verification**: Optional email verification for new accounts
+- **Admin Password Reset**: CAPTCHA-protected password reset for admins
+- **No Email Verification**: Simplified signup without email verification (faster onboarding)
 
 ### Protected Routes
 All user data routes require authentication:
@@ -807,11 +842,36 @@ investment-advisor/
 
 ## 🌐 Deployment
 
+### Quick Deploy to Vercel with Neon
+
+The easiest way to deploy is using Vercel + Neon PostgreSQL:
+
+1. **Create Neon Database** (Free tier available):
+   - Go to https://console.neon.tech/signup
+   - Sign up with GitHub/Google
+   - Create a project (choose region closest to your users)
+   - Copy the DATABASE_URL
+
+2. **Deploy to Vercel**:
+   - Go to https://vercel.com/new
+   - Import your GitHub repository
+   - Add environment variables:
+     - `DATABASE_URL`: Your Neon connection string
+     - `NEXTAUTH_URL`: `https://your-app.vercel.app`
+     - `NEXTAUTH_SECRET`: Generate at https://generate-secret.vercel.app/32
+   - Click Deploy
+
+3. **Initialize Database** (one-time setup):
+   ```bash
+   # After adding DATABASE_URL to Vercel, run locally:
+   DATABASE_URL="your_neon_url" npx prisma db push
+   ```
+
 ### Vercel (Recommended)
 
 1. **Push to GitHub**
 2. **Deploy to Vercel** with environment variables:
-   - `DATABASE_URL` - PostgreSQL connection string
+   - `DATABASE_URL` - PostgreSQL connection string from Neon
    - `NEXTAUTH_URL` - Your domain URL
    - `NEXTAUTH_SECRET` - Generate with: `openssl rand -base64 32`
 
