@@ -193,14 +193,42 @@ export default function InstrumentPage() {
 
   const convertToOHLCV = (historicalData: any[]): OHLCVData[] => {
     if (!historicalData) return [];
-    return historicalData.map(d => ({
-      time: Math.floor(new Date(d.date).getTime() / 1000),
-      open: d.open ?? d.price,
-      high: d.high ?? d.price,
-      low: d.low ?? d.price,
-      close: d.close ?? d.price,
-      volume: d.volume,
-    }));
+
+    // Convert to OHLCV format and handle duplicate timestamps
+    const dataMap = new Map<number, OHLCVData>();
+
+    historicalData.forEach(d => {
+      const time = Math.floor(new Date(d.date).getTime() / 1000);
+
+      // If we already have this timestamp, update the existing entry
+      // This handles cases where multiple entries have the same timestamp
+      if (dataMap.has(time)) {
+        const existing = dataMap.get(time)!;
+        // Update high/low to be the max/min of both entries
+        dataMap.set(time, {
+          time,
+          open: existing.open,
+          high: Math.max(existing.high, d.high ?? d.price),
+          low: Math.min(existing.low, d.low ?? d.price),
+          close: d.close ?? d.price, // Use the latest close
+          volume: (existing.volume || 0) + (d.volume || 0),
+        });
+      } else {
+        dataMap.set(time, {
+          time,
+          open: d.open ?? d.price,
+          high: d.high ?? d.price,
+          low: d.low ?? d.price,
+          close: d.close ?? d.price,
+          volume: d.volume,
+        });
+      }
+    });
+
+    // Convert map to array and sort by time ascending
+    const result = Array.from(dataMap.values()).sort((a, b) => a.time - b.time);
+
+    return result;
   };
 
   const getTypeColor = (type: string) => {

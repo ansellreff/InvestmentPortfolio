@@ -1,4 +1,4 @@
-# Deployment Guide - Investment Advisor v3.3.0
+# Deployment Guide - Investment Advisor v3.4.0
 
 ## 📋 Prerequisites
 
@@ -150,10 +150,12 @@ vercel
 2. **Test key features:**
    - [ ] Sign up as new user (first user automatically becomes admin)
    - [ ] Login with created account
+   - [ ] Test password visibility toggle (eye icon)
+   - [ ] Verify optional fields (DOB, phone, location) can be left blank
    - [ ] Add portfolio position
    - [ ] Access admin panel (click avatar → Admin Panel)
+   - [ ] Test admin password reset (with CAPTCHA)
    - [ ] Test real-time prices
-   - [ ] Verify optional fields can be left blank
 
 ## 👑 Step 6: Access Admin Panel
 
@@ -166,10 +168,12 @@ After signing up (as the first user), you automatically become admin:
 
 **Admin Features:**
 - View all registered users
-- Click any user to see their details
-- Reset user passwords (with CAPTCHA verification)
-- View and delete user portfolios
-- Export database
+- Click any user to see their full details
+- Reset any user's password (with Math CAPTCHA verification)
+- View and delete user portfolio items
+- Grant/revoke admin privileges
+- Export database as JSON
+- View system statistics
 
 ## 🔄 Step 7: Set Up Custom Domain (Optional)
 

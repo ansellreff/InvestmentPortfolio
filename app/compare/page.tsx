@@ -142,16 +142,41 @@ export default function ComparePage() {
     }
   };
 
-  // Convert historical data to OHLCV format for ProfessionalChart
+  // Convert historical data to OHLCV format with deduplication
   const convertToOHLCV = (historicalData: DetailedData['historicalData']): OHLCVData[] => {
-    return historicalData.map(d => ({
-      time: Math.floor(new Date(d.date).getTime() / 1000),
-      open: d.open ?? d.price,
-      high: d.high ?? d.price,
-      low: d.low ?? d.price,
-      close: d.close ?? d.price,
-      volume: d.volume,
-    }));
+    if (!historicalData || historicalData.length === 0) return [];
+
+    // Use Map to handle duplicate timestamps
+    const dataMap = new Map<number, OHLCVData>();
+
+    historicalData.forEach(d => {
+      const time = Math.floor(new Date(d.date).getTime() / 1000);
+
+      // If we already have this timestamp, update the existing entry
+      if (dataMap.has(time)) {
+        const existing = dataMap.get(time)!;
+        dataMap.set(time, {
+          time,
+          open: existing.open,
+          high: Math.max(existing.high, d.high ?? d.price),
+          low: Math.min(existing.low, d.low ?? d.price),
+          close: d.close ?? d.price,
+          volume: (existing.volume || 0) + (d.volume || 0),
+        });
+      } else {
+        dataMap.set(time, {
+          time,
+          open: d.open ?? d.price,
+          high: d.high ?? d.price,
+          low: d.low ?? d.price,
+          close: d.close ?? d.price,
+          volume: d.volume,
+        });
+      }
+    });
+
+    // Sort by time ascending and convert to array
+    return Array.from(dataMap.values()).sort((a, b) => a.time - b.time);
   };
 
   // Show empty state if no instruments selected

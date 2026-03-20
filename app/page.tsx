@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Navigation } from '@/components/Navigation';
 import { TickerTape } from '@/components/market/TickerTape';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useRealtimePrice } from '@/hooks/useRealtimePrice';
 import {
-  Search, Plus, Star, TrendingUp,
+  Search, Plus, Star, TrendingUp, TrendingDown,
   Bitcoin, DollarSign, Coins, Gem, BarChart3, LineChart,
   Clock, Activity, ChevronRight, X, Loader2, ChevronDown
 } from 'lucide-react';
@@ -24,6 +25,8 @@ interface LivePrice {
   price: number;
   currency: string;
   lastUpdate: number;
+  change?: number;
+  changePercent?: number;
 }
 
 interface SearchResult {
@@ -69,13 +72,23 @@ export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [loadedSymbols, setLoadedSymbols] = useState<Set<string>>(new Set());
+  const [flashStates, setFlashStates] = useState<Record<string, 'up' | 'down' | null>>({});
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Get all visible instrument symbols for price updates
+  const visibleSymbols = instruments.map(i => i.symbol);
+
   const { selectedInstruments, addInstrument, removeInstrument } = useComparisonStore();
   const { items: watchlist, addItem: addToWatchlist, isInWatchlist } = useWatchlist();
   const { formatPrice: formatPriceInCurrency } = useCurrency();
+
+  // Optimized price updates - 10 second polling (no WebSocket to avoid errors)
+  const { prices: realtimePrices } = useRealtimePrice(visibleSymbols, {
+    enabled: visibleSymbols.length > 0,
+    updateInterval: 10000 // 10 second updates
+  });
 
   // Fetch instruments by category
   useEffect(() => {
@@ -334,6 +347,33 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [instruments]);
 
+  // Merge real-time prices into stockPrices with flash animation
+  useEffect(() => {
+    Object.entries(realtimePrices).forEach(([symbol, data]) => {
+      const prevPrice = stockPrices[symbol]?.price || 0;
+
+      // Trigger flash animation if price changed
+      if (data.price !== prevPrice && prevPrice > 0) {
+        const direction = data.price > prevPrice ? 'up' : 'down';
+        setFlashStates(prev => ({ ...prev, [symbol]: direction }));
+        setTimeout(() => {
+          setFlashStates(prev => ({ ...prev, [symbol]: null }));
+        }, 500);
+      }
+
+      setStockPrices(prev => ({
+        ...prev,
+        [symbol]: {
+          price: data.price,
+          currency: data.currency || 'USD',
+          lastUpdate: Date.now(),
+          change: data.change,
+          changePercent: data.changePercent,
+        },
+      }));
+    });
+  }, [realtimePrices]);
+
   const isSelected = (symbol: string) => selectedInstruments.some(i => i.symbol === symbol);
 
   const handleAddToComparison = (symbol: string, name: string, type: string) => {
@@ -562,11 +602,17 @@ export default function HomePage() {
                   const isAdded = isSelected(instrument.symbol);
                   const isWatched = isInWatchlist(instrument.symbol);
                   const icon = getInstrumentIcon(instrument.type, instrument.category);
+                  const flashDir = flashStates[instrument.symbol];
+                  const change = priceData?.changePercent || 0;
+                  const isUp = change >= 0;
 
                   return (
                     <Card
                       key={instrument.symbol}
-                      className="group hover:shadow-xl transition-all duration-300 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600"
+                      className={`group hover:shadow-xl transition-all duration-300 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 ${
+                        flashDir === 'up' ? 'bg-green-50/50 dark:bg-green-900/10' :
+                        flashDir === 'down' ? 'bg-red-50/50 dark:bg-red-900/10' : ''
+                      }`}
                     >
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between mb-4">
@@ -591,13 +637,22 @@ export default function HomePage() {
                             <div className="h-8 bg-slate-100 dark:bg-slate-800 animate-pulse rounded"></div>
                           ) : priceData ? (
                             <div>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              <p className={`text-2xl font-bold tabular-nums transition-colors ${
+                                flashDir === 'up' ? 'text-green-600' :
+                                flashDir === 'down' ? 'text-red-600' : 'text-slate-900 dark:text-white'
+                              }`}>
                                 {formatPriceInCurrency(priceData.price, priceData.currency)}
                               </p>
-                              <p className="text-xs text-slate-500 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {new Date(priceData.lastUpdate).toLocaleTimeString()}
-                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <p className={`text-xs font-medium flex items-center gap-1 ${isUp ? 'text-green-600' : 'text-red-600'}`}>
+                                  {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                  {isUp ? '+' : ''}{change?.toFixed(2) || '0.00'}%
+                                </p>
+                                <p className="text-xs text-slate-500 flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {new Date(priceData.lastUpdate).toLocaleTimeString()}
+                                </p>
+                              </div>
                             </div>
                           ) : (
                             <p className="text-slate-400 text-sm">Loading...</p>

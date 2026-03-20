@@ -299,8 +299,18 @@ export function ProfessionalChart({
 
       mainSeriesRef.current = mainSeries;
 
-      // Set data
-      const chartData = initialData.map(d => {
+      // Set data - ensure unique timestamps and proper sorting
+      const uniqueDataMap = new Map<number, typeof initialData[0]>();
+
+      // Deduplicate by timestamp (keep the last entry for each timestamp)
+      initialData.forEach(d => {
+        uniqueDataMap.set(d.time, d);
+      });
+
+      // Convert to array and ensure ascending order by time
+      const sortedUniqueData = Array.from(uniqueDataMap.values()).sort((a, b) => a.time - b.time);
+
+      const chartData = sortedUniqueData.map(d => {
         if (chartType === 'line' || chartType === 'area') {
           return { time: d.time as any, value: d.close };
         }

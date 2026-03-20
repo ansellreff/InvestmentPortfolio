@@ -40,7 +40,7 @@ export async function GET() {
         change: silverData.change,
         changePercent: silverData.changePercent,
         currency: silverData.currency,
-        source: 'Metals Live API',
+        source: 'Yahoo Finance',
         timestamp: new Date().toISOString(),
       },
     });

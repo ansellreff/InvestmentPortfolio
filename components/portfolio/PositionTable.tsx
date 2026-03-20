@@ -24,9 +24,10 @@ interface PositionTableProps {
   onEdit: (position: Position) => void;
   onDelete: (id: string) => void;
   loading?: boolean;
+  flashStates?: Record<string, 'up' | 'down' | null>;
 }
 
-export function PositionTable({ positions, onEdit, onDelete, loading = false }: PositionTableProps) {
+export function PositionTable({ positions, onEdit, onDelete, loading = false, flashStates = {} }: PositionTableProps) {
   const { formatPrice } = useCurrency();
   const typeColors: Record<string, string> = {
     'GOLD': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -89,9 +90,10 @@ export function PositionTable({ positions, onEdit, onDelete, loading = false }: 
             <TableBody>
               {positions.map((position) => {
                 const isProfitable = (position.profitLoss || 0) >= 0;
+                const flashDir = flashStates[position.symbol];
 
                 return (
-                  <TableRow key={position.id}>
+                  <TableRow key={position.id} className={flashDir ? (flashDir === 'up' ? 'bg-green-50/30 dark:bg-green-900/10' : 'bg-red-50/30 dark:bg-red-900/10') : ''}>
                     <TableCell>
                       <div>
                         <p className="font-semibold text-sm">{position.symbol}</p>
@@ -106,7 +108,10 @@ export function PositionTable({ positions, onEdit, onDelete, loading = false }: 
                     </TableCell>
                     <TableCell className="text-right">
                       <div>
-                        <span className="font-medium">
+                        <span className={`font-medium tabular-nums transition-colors ${
+                          flashDir === 'up' ? 'text-green-600' :
+                          flashDir === 'down' ? 'text-red-600' : ''
+                        }`}>
                           {position.currentPrice !== undefined
                             ? formatPrice(position.currentPrice, position.priceCurrency || position.currency)
                             : '—'}

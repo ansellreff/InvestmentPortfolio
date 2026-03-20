@@ -17,9 +17,9 @@ export function LivePriceTicker({
   showChart = false,
   className = ''
 }: LivePriceTickerProps) {
-  const { prices, isConnected, getPrice } = useRealtimePrice([symbol], {
+  const { prices, getPrice } = useRealtimePrice([symbol], {
     enabled: true,
-    fallbackInterval: 3000 // 3 second fallback
+    updateInterval: 10000 // 10 second updates
   });
 
   const priceData = getPrice(symbol);
@@ -73,14 +73,6 @@ export function LivePriceTicker({
           {isUp ? '+' : ''}{priceData.changePercent.toFixed(2)}%
         </span>
 
-        {isConnected && (
-          <span className="flex items-center gap-1" title="Live connection">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-          </span>
-        )}
       </div>
     </div>
   );

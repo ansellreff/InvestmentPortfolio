@@ -13,8 +13,8 @@ import {
 
 export function useCurrency() {
   const { currency: targetCurrency } = useCurrencyStore();
-  const [rates, setRates] = useState<Record<string, number>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [rates, setRates] = useState<Record<string, number>>({ USD: 1 });
+  const [isLoading, setIsLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<number>(0);
   const isMounted = useRef(true);
 
@@ -23,19 +23,32 @@ export function useCurrency() {
     if (!isMounted.current) return;
 
     setIsLoading(true);
+
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (isMounted.current) {
+        console.warn('[Currency] Loading timeout, using fallback rates');
+        setIsLoading(false);
+        setRates({ USD: 1 });
+      }
+    }, 5000); // 5 second timeout
+
     try {
       const exchangeRates = await fetchExchangeRates();
+      clearTimeout(timeoutId);
       if (isMounted.current) {
         setRates(exchangeRates);
         setLastUpdate(Date.now());
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('[Currency] Failed to load exchange rates:', error);
       // Ensure USD is always available with rate 1
       if (isMounted.current) {
         setRates({ USD: 1 });
       }
     } finally {
+      clearTimeout(timeoutId);
       if (isMounted.current) {
         setIsLoading(false);
       }

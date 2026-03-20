@@ -21,7 +21,8 @@ import { HeaderCurrencySelector } from '@/components/ui/HeaderCurrencySelector';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Navigation } from '@/components/Navigation';
 import { useCurrency } from '@/hooks/useCurrency';
-import { TrendingUp, Wallet, Plus, RefreshCw, PieChart as PieChartIcon, Trash2, Edit3, CheckCircle, Cloud, CloudOff, AlertCircle, Loader2, PieChart } from 'lucide-react';
+import { useRealtimePrice } from '@/hooks/useRealtimePrice';
+import { TrendingUp, TrendingDown, Wallet, Plus, RefreshCw, PieChart as PieChartIcon, Trash2, Edit3, CheckCircle, Cloud, CloudOff, AlertCircle, Loader2, PieChart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface EnrichedPosition extends Position {
@@ -83,6 +84,14 @@ export default function PortfolioPage() {
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
   const [performanceData, setPerformanceData] = useState<PerformanceMetrics | null>(null);
   const [performanceLoading, setPerformanceLoading] = useState(false);
+  const [flashStates, setFlashStates] = useState<Record<string, 'up' | 'down' | null>>({});
+
+  // Optimized price updates - 10 second polling (no WebSocket)
+  const positionSymbols = positions.map(p => p.symbol);
+  const { prices: realtimePrices } = useRealtimePrice(positionSymbols, {
+    enabled: positionSymbols.length > 0,
+    updateInterval: 10000 // 10 second updates
+  });
 
   // Auth guard - redirect to signin if not authenticated
   useEffect(() => {
@@ -173,6 +182,45 @@ export default function PortfolioPage() {
     fetchPerformanceData();
   }, [positions]);
 
+  // Real-time price updates from WebSocket/polling
+  useEffect(() => {
+    if (Object.keys(realtimePrices).length === 0) return;
+
+    setEnrichedPositions(prev => prev.map(pos => {
+      const rtPrice = realtimePrices[pos.symbol];
+      if (!rtPrice) return pos;
+
+      const prevPrice = pos.currentPrice || pos.averageBuyPrice;
+
+      // Trigger flash animation if price changed significantly
+      if (rtPrice.price !== prevPrice && Math.abs(rtPrice.price - prevPrice) > 0.01) {
+        const direction = rtPrice.price > prevPrice ? 'up' : 'down';
+        setFlashStates(prev => ({ ...prev, [pos.symbol]: direction }));
+        setTimeout(() => {
+          setFlashStates(prev => ({ ...prev, [pos.symbol]: null }));
+        }, 500);
+      }
+
+      // Recalculate values with new price
+      const currentValue = rtPrice.price * pos.quantity;
+      const costBasis = pos.averageBuyPrice * pos.quantity;
+      const profitLoss = currentValue - costBasis;
+      const profitLossPercent = costBasis > 0 ? (profitLoss / costBasis) * 100 : 0;
+
+      return {
+        ...pos,
+        currentPrice: rtPrice.price,
+        change: rtPrice.change || 0,
+        changePercent: rtPrice.changePercent || 0,
+        priceCurrency: rtPrice.currency || pos.currency,
+        currentValue,
+        costBasis,
+        profitLoss,
+        profitLossPercent,
+      };
+    }));
+  }, [realtimePrices, positions]);
+
   const handleAddPosition = async (data: Omit<Position, 'id' | 'addedAt'>) => {
     const success = await addPositionWithSync(data);
     if (success) {
@@ -211,20 +259,9 @@ export default function PortfolioPage() {
     setShowAddForm(true);
   };
 
-  // Show loading state while checking auth
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-4" />
-          <p className="text-slate-600 dark:text-slate-400">Loading portfolio...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Calculate summary stats with currency conversion
   // Use useMemo to recalculate when enrichedPositions or targetCurrency changes
+  // NOTE: This hook must be called before any early returns to avoid hooks order violation
   const summaryData = useMemo(() => {
     if (enrichedPositions.length === 0) {
       return {
@@ -267,6 +304,18 @@ export default function PortfolioPage() {
       totalProfitLossPercent,
     };
   }, [enrichedPositions, targetCurrency, convertPrice]);
+
+  // Show loading state while checking auth
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-400">Loading portfolio...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -423,6 +472,7 @@ export default function PortfolioPage() {
                   onEdit={handleEditClick}
                   onDelete={handleDeletePosition}
                   loading={loading}
+                  flashStates={flashStates}
                 />
 
                 {/* Add/Edit Position Form */}

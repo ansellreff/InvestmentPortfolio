@@ -1,4 +1,137 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getMetalPriceWithChange } from '@/lib/api/metals';
+import { getPrice as getRealtimePrice } from '@/lib/api/realtime';
+import { getQuote } from '@/lib/api/finnhub';
+import { logger } from '@/lib/utils/logger';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+/**
+ * Batch Price API - Direct Function Calls (No HTTP)
+ *
+ * This endpoint fetches multiple prices in parallel by calling
+ * the underlying functions directly instead of making HTTP requests.
+ * This is much faster and works reliably on Vercel.
+ */
+
+interface PriceResult {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  currency: string;
+  lastUpdate: number;
+}
+
+// Helper function to fetch gold/silver/platinum/palladium price
+async function fetchMetalPrice(metal: 'gold' | 'silver' | 'platinum' | 'palladium'): Promise<PriceResult | null> {
+  try {
+    const data = await getMetalPriceWithChange(metal);
+    if (data?.price) {
+      return {
+        symbol: metal.toUpperCase(),
+        price: data.price,
+        change: data.change || 0,
+        changePercent: data.changePercent || 0,
+        currency: data.currency || 'USD',
+        lastUpdate: Date.now()
+      };
+    }
+  } catch (error) {
+    logger.warn(`[BatchPrice] Failed to fetch ${metal}:`, error);
+  }
+  return null;
+}
+
+// Helper function to fetch crypto price
+async function fetchCryptoPrice(symbol: string): Promise<PriceResult | null> {
+  try {
+    const data = await getRealtimePrice(symbol.includes('-') ? symbol : `${symbol}-USD`);
+    if (data?.price && data.price > 0) {
+      return {
+        symbol: symbol.toUpperCase(),
+        price: data.price,
+        change: data.change || 0,
+        changePercent: data.changePercent || 0,
+        currency: data.currency || 'USD',
+        lastUpdate: Date.now()
+      };
+    }
+  } catch (error) {
+    logger.warn(`[BatchPrice] Failed to fetch crypto ${symbol}:`, error);
+  }
+  return null;
+}
+
+// Helper function to fetch stock price
+async function fetchStockPrice(symbol: string): Promise<PriceResult | null> {
+  try {
+    // Try Finnhub first for US stocks
+    const finnhubQuote = await getQuote(symbol);
+    if (finnhubQuote?.c && finnhubQuote.c > 0) {
+      return {
+        symbol: symbol.toUpperCase(),
+        price: finnhubQuote.c,
+        change: finnhubQuote.d || 0,
+        changePercent: finnhubQuote.dp || 0,
+        currency: 'USD',
+        lastUpdate: Date.now()
+      };
+    }
+
+    // Fallback to real-time API
+    const data = await getRealtimePrice(symbol);
+    if (data?.price && data.price > 0) {
+      return {
+        symbol: symbol.toUpperCase(),
+        price: data.price,
+        change: data.change || 0,
+        changePercent: data.changePercent || 0,
+        currency: data.currency || 'USD',
+        lastUpdate: Date.now()
+      };
+    }
+  } catch (error) {
+    logger.warn(`[BatchPrice] Failed to fetch stock ${symbol}:`, error);
+  }
+  return null;
+}
+
+// Determine symbol type and fetch appropriate price
+async function fetchSymbolPrice(symbol: string): Promise<PriceResult | null> {
+  const typeUpper = String(symbol).toUpperCase();
+
+  // Precious metals
+  if (typeUpper === 'GOLD' || typeUpper === 'XAU') {
+    return fetchMetalPrice('gold' as const);
+  }
+  if (typeUpper === 'SILVER' || typeUpper === 'XAG') {
+    return fetchMetalPrice('silver' as const);
+  }
+  if (typeUpper === 'PLATINUM' || typeUpper === 'XPT') {
+    return fetchMetalPrice('platinum' as const);
+  }
+  if (typeUpper === 'PALLADIUM' || typeUpper === 'XPD') {
+    return fetchMetalPrice('palladium' as const);
+  }
+
+  // Crypto symbols - check if it matches known cryptocurrencies
+  const knownCrypto = ['BTC', 'ETH', 'XRP', 'ADA', 'DOT', 'SOL', 'DOGE', 'MATIC', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'BCH', 'XLM', 'BNB', 'USDT', 'USDC', 'DAI'];
+  const isCrypto = knownCrypto.some(c => typeUpper.includes(c) || typeUpper.startsWith(c) || typeUpper.endsWith(c));
+
+  if (isCrypto) {
+    return fetchCryptoPrice(symbol);
+  }
+
+  // Indonesian stocks end with .JK
+  if (typeUpper.endsWith('.JK')) {
+    return fetchStockPrice(symbol);
+  }
+
+  // Default to stock
+  return fetchStockPrice(symbol);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,70 +147,25 @@ export async function POST(request: NextRequest) {
     // Deduplicate symbols
     const uniqueSymbols = Array.from(new Set(symbols));
 
-    // Fetch all prices in parallel
-    const pricePromises = uniqueSymbols.map(async (symbol: string) => {
-      try {
-        // Determine symbol type and route to correct API
-        const typeUpper = String(symbol).toUpperCase();
-        let endpoint = '';
+    logger.api('[BatchPrice]', `Fetching prices for ${uniqueSymbols.length} symbols`);
 
-        // Check for precious metals
-        if (typeUpper === 'GOLD' || typeUpper === 'XAU') {
-          endpoint = '/api/gold/price';
-        } else if (typeUpper === 'SILVER' || typeUpper === 'XAG') {
-          endpoint = '/api/silver/price';
-        } else if (typeUpper === 'PLATINUM') {
-          endpoint = '/api/platinum/price';
-        } else if (typeUpper === 'PALLADIUM') {
-          endpoint = '/api/palladium/price';
-        }
-        // Check for crypto
-        else if (['BTC', 'ETH', 'XRP', 'ADA', 'DOT', 'SOL', 'DOGE', 'MATIC', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'BCH', 'XLM', 'BNB']
-          .some(c => typeUpper.includes(c) || typeUpper.startsWith(c))) {
-          endpoint = `/api/crypto/price?symbol=${symbol}`;
-        }
-        // Default to stocks
-        else {
-          endpoint = `/api/stocks/price?symbol=${symbol}`;
-        }
-
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const res = await fetch(`${baseUrl}${endpoint}`, {
-          cache: 'no-store',
-          headers: { 'Content-Type': 'application/json' }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.data) {
-            return {
-              symbol,
-              price: data.data.price,
-              change: data.data.change || 0,
-              changePercent: data.data.changePercent || 0,
-              currency: data.data.currency || 'USD',
-              lastUpdate: Date.now()
-            };
-          }
-        }
-      } catch (error) {
-        console.error(`[BatchPrice] Failed to fetch ${symbol}:`, error);
-      }
-      return null;
-    });
-
+    // Fetch all prices in parallel using direct function calls
+    const pricePromises = uniqueSymbols.map(fetchSymbolPrice);
     const results = await Promise.all(pricePromises);
-    const priceMap: Record<string, any> = {};
 
-    results.forEach(result => {
+    const priceMap: Record<string, PriceResult> = {};
+
+    results.forEach((result, index) => {
       if (result) {
-        priceMap[result.symbol] = result;
+        priceMap[uniqueSymbols[index]] = result;
       }
     });
+
+    logger.debug('[BatchPrice]', `Successfully fetched ${Object.keys(priceMap).length} prices`);
 
     return NextResponse.json({ success: true, data: priceMap });
   } catch (error) {
-    console.error('[BatchPrice] Error:', error);
+    logger.error('[BatchPrice] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
@@ -97,6 +185,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Reuse POST logic
-  return POST(request);
+  // Create a mock request body for the POST handler
+  const mockRequest = new Request(request.url, {
+    method: 'POST',
+    body: JSON.stringify({ symbols })
+  });
+
+  return POST(mockRequest as NextRequest);
 }

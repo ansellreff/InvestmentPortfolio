@@ -40,7 +40,7 @@ export async function GET() {
         change: palladiumData.change,
         changePercent: palladiumData.changePercent,
         currency: palladiumData.currency,
-        source: 'Metals Live API',
+        source: 'Yahoo Finance',
         timestamp: new Date().toISOString(),
       },
     });

@@ -6,14 +6,13 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 /**
- * Gold Price API - Reliable Metals Price Source
+ * Gold Price API - Yahoo Finance Futures (GC=F)
  *
- * This endpoint returns the current gold spot price from multiple reliable sources:
- * - metals.live (primary)
- * - Financial Modeling Prep
- * - Alternative commodity APIs
+ * This endpoint returns the current gold futures price from Yahoo Finance:
+ * - Primary: Yahoo Finance Gold Futures (GC=F)
+ * - Fallback: Alternative metals APIs
  *
- * Consistent gold spot price (~$5,000-$5,200 per ounce)
+ * Real-time gold futures price from NYMEX/COMEX
  */
 export async function GET() {
   try {
@@ -26,9 +25,9 @@ export async function GET() {
         data: {
           symbol: 'GOLD',
           name: 'Gold Spot',
-          price: 5158.00,
-          change: 25.40,
-          changePercent: 0.49,
+          price: 4500.00,
+          change: 22.50,
+          changePercent: 0.5,
           currency: 'USD',
           source: 'Fallback',
           timestamp: new Date().toISOString(),
@@ -47,7 +46,7 @@ export async function GET() {
         change: goldData.change,
         changePercent: goldData.changePercent,
         currency: goldData.currency,
-        source: 'Metals Live API',
+        source: 'Yahoo Finance',
         timestamp: new Date().toISOString(),
       },
     });

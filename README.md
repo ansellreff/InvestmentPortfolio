@@ -2,25 +2,47 @@
 
 A professional-grade SaaS web application for comparing investment instruments including gold, stocks, crypto, and other assets with real-time data, technical analysis, AI-powered forecasting, and user account management.
 
-![Version](https://img.shields.io/badge/version-3.3.0-blue)
+![Version](https://img.shields.io/badge/version-3.5.0-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-16.1-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## 🆕 What's New in v3.3
+## 🆕 What's New in v3.5
+
+### 🐛 Critical Bug Fixes
+- **Fixed Lightweight Charts Duplicate Timestamp Error**: Added Map-based deduplication to `convertToOHLCV` function in analyze and compare pages
+- **Fixed Dashboard Infinite Loading**: Removed redundant `useCurrencyStore()` call that caused hooks order violation
+- **Fixed Portfolio Sync Across Pages**: Dashboard now uses same Zustand stores as portfolio page for data consistency
+- **Fixed Metals API Showing Same Price**: Each metal (Gold, Silver, Platinum, Palladium) now has separate cache keys
+- **Added 5-Second Timeout**: `useCurrency` hook now prevents infinite loading with fallback rates
+- **Added Debug Endpoint**: `/api/debug/metals` for testing Yahoo Finance metals data
+
+### 🔧 Technical Improvements
+- **Yahoo Finance Futures Integration**: All metals now use Yahoo Finance futures (GC=F, SI=F, PL=F, PA=F) as primary data source
+- **Price Range Validation**: Added validation for metals prices to detect anomalies
+- **Enhanced Logging**: Better console logging for debugging metals price issues
+
+## 🆕 What's New in v3.4
 
 ### 🔐 Authentication & Security Improvements
-- **Password Visibility Toggle**: Eye icon to show/hide password on all auth forms
-- **Admin Password Reset**: Admins can reset any user's password via admin panel (with CAPTCHA verification)
-- **Math CAPTCHA**: Simple 2-step verification for admin password reset
-- **Removed Email Verification**: Simplified signup - no email verification required
-- **Fixed Optional Fields**: Properly handles empty optional fields (date of birth, phone, location)
+- **Password Visibility Toggle**: Eye icon to show/hide password on all auth forms (signin, signup, reset password)
+- **Admin Password Reset**: Admins can reset any user's password via admin panel with Math CAPTCHA verification
+- **Simple Math CAPTCHA**: 2-step verification using simple addition for admin password reset
+- **No Email Verification**: Simplified signup - no email verification required for faster onboarding
+- **Fixed Optional Fields**: Properly handles null/empty values for optional fields (date of birth, phone, location)
 
 ### 🚀 Deployment & Database
-- **Neon PostgreSQL Integration**: Production-ready PostgreSQL database via Neon
-- **Vercel Deployment**: Optimized for Vercel with auto-deployment from GitHub
-- **Database Schema**: Migrated from SQLite (dev) to PostgreSQL (production)
-- **Environment Configuration**: Proper setup for Vercel environment variables
+- **Neon PostgreSQL Integration**: Production-ready PostgreSQL database via Neon (free tier available)
+- **Vercel Deployment**: Fully optimized for Vercel with auto-deployment from GitHub
+- **Database Migration**: SQLite (local development) → PostgreSQL (production on Neon)
+- **Environment Configuration**: Complete setup guide for Vercel environment variables
+
+### 👑 Admin Features
+- **Automatic Admin Setup**: First registered user automatically becomes admin
+- **User Management**: View, edit, and delete user accounts
+- **Password Reset**: Reset any user's password from admin panel (CAPTCHA protected)
+- **Database Export**: Download complete database as JSON
+- **Portfolio Management**: View and manage user portfolios
 
 ### 🐛 Bug Fixes
 - **Fixed Signup Validation**: Optional fields now properly accept null/empty values
@@ -348,7 +370,7 @@ npx prisma db execute "UPDATE User SET isAdmin = true WHERE email = 'your-email@
 
 Navigate to `/admin` after setting up admin access:
 
-#### User Management (Enhanced in v3.2)
+#### User Management (Enhanced in v3.4)
 - **View All Users**: Paginated list of all registered users
 - **Search Users**: Filter by name or email
 - **User Details Modal**: Click the eye icon to view detailed user information including:
@@ -358,11 +380,11 @@ Navigate to `/admin` after setting up admin access:
   - Watchlist items
   - Recent activity logs
   - User preferences
-  - Email verification status
 - **Edit Users**: Modify user information directly
 - **Delete Users**: Remove users and all their data
 - **Grant/Revoke Admin**: Toggle admin status for any user
 - **Delete Portfolio Items**: Remove individual portfolio positions from user accounts
+- **Reset User Password**: Admin can reset any user's password (with Math CAPTCHA verification)
 
 #### Database Statistics
 - Total users count
@@ -396,6 +418,13 @@ PUT /api/admin/users/[userId]
 
 # Delete user's portfolio item (admin only)
 DELETE /api/admin/users/[userId]?portfolioId=portfolio-id
+
+# Reset user password (admin only) - Requires Math CAPTCHA
+POST /api/admin/users/[userId]/reset-password
+{
+  "newPassword": "newSecurePassword123",
+  "captchaAnswer": 5  # Answer to: 2 + 3 = ?
+}
 
 # Get database statistics (admin only)
 GET /api/admin/stats

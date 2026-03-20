@@ -4,11 +4,12 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MiniChart } from './MiniChart';
 import { TrendingUp, TrendingDown, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { formatCurrency as formatCurrencyUtil } from '@/lib/utils/currency';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useWatchlist } from '@/stores/useWatchlist';
+import { useRealtimePrice } from '@/hooks/useRealtimePrice';
 
 interface PriceCardProps {
   symbol: string;
@@ -34,15 +35,25 @@ export function PriceCard({ symbol, name, type = 'STOCK', onAddToWatchlist, onAd
   const [loading, setLoading] = useState(true);
   const [addedAnimation, setAddedAnimation] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [previousPrice, setPreviousPrice] = useState(0);
+  const [flashDirection, setFlashDirection] = useState<'up' | 'down' | null>(null);
   const { isInWatchlist: checkIsInWatchlist } = useWatchlist();
   const { formatPrice: formatPriceInCurrency } = useCurrency();
 
+  // Real-time price updates via polling
+  const { prices } = useRealtimePrice([symbol], {
+    enabled: true,
+    updateInterval: 10000 // 10 second updates
+  });
+
+  const realtimePriceData = prices[symbol];
   const isInWatchlist = mounted ? checkIsInWatchlist(symbol) : false;
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Initial data fetch
   useEffect(() => {
     const fetchPrice = async () => {
       try {
@@ -73,8 +84,8 @@ export function PriceCard({ symbol, name, type = 'STOCK', onAddToWatchlist, onAd
               currency: result.data.currency || 'USD',
               sparkline,
             });
+            setPreviousPrice(price);
           } else {
-            console.warn(`Invalid price received for ${symbol}:`, price);
             setData({
               symbol,
               name: name || symbol,
@@ -86,7 +97,6 @@ export function PriceCard({ symbol, name, type = 'STOCK', onAddToWatchlist, onAd
             });
           }
         } else {
-          console.warn(`Failed to fetch price for ${symbol}:`, result.error);
           setData(null);
         }
       } catch (error) {
@@ -109,18 +119,42 @@ export function PriceCard({ symbol, name, type = 'STOCK', onAddToWatchlist, onAd
     };
   }, [symbol, type, name]);
 
+  // Update data when real-time prices change
+  useEffect(() => {
+    if (realtimePriceData && data) {
+      const newPrice = realtimePriceData.price;
+      const change = realtimePriceData.change;
+      const changePercent = realtimePriceData.changePercent;
+
+      // Flash animation on price change
+      if (newPrice !== data.price && newPrice !== previousPrice) {
+        const direction = newPrice > previousPrice ? 'up' : 'down';
+        setFlashDirection(direction);
+        setTimeout(() => setFlashDirection(null), 500);
+        setPreviousPrice(newPrice);
+      }
+
+      setData(prev => prev ? {
+        ...prev,
+        price: newPrice,
+        change: change || 0,
+        changePercent: changePercent || 0,
+      } : null);
+    }
+  }, [realtimePriceData]);
+
   // Generate mock sparkline data
   const generateSparkline = (currentPrice: number, basePrice: number) => {
     const points = 20;
-    const data = [];
+    const dataArr = [];
     let price = basePrice;
 
     for (let i = 0; i < points; i++) {
       price = price + (Math.random() - 0.45) * (currentPrice * 0.02);
-      data.push(price);
+      dataArr.push(price);
     }
-    data.push(currentPrice);
-    return data;
+    dataArr.push(currentPrice);
+    return dataArr;
   };
 
   const formatPrice = (price: number, currency: string) => {
@@ -163,7 +197,10 @@ export function PriceCard({ symbol, name, type = 'STOCK', onAddToWatchlist, onAd
 
   return (
     <Link href={`/instrument/${data.symbol}`}>
-      <Card className="p-4 hover:shadow-lg transition-all cursor-pointer group">
+      <Card className={`p-4 hover:shadow-lg transition-all cursor-pointer group ${
+        flashDirection === 'up' ? 'bg-green-50/50 dark:bg-green-900/10' :
+        flashDirection === 'down' ? 'bg-red-50/50 dark:bg-red-900/10' : ''
+      }`}>
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
@@ -202,7 +239,12 @@ export function PriceCard({ symbol, name, type = 'STOCK', onAddToWatchlist, onAd
         <div className="flex items-end justify-between mb-3">
           <div>
             {data.price > 0 ? (
-              <p className="text-2xl font-bold">{formatPrice(data.price, data.currency)}</p>
+              <p className={`text-2xl font-bold tabular-nums transition-colors ${
+                flashDirection === 'up' ? 'text-green-600' :
+                flashDirection === 'down' ? 'text-red-600' : ''
+              }`}>
+                {formatPrice(data.price, data.currency)}
+              </p>
             ) : (
               <p className="text-2xl font-bold text-slate-400">N/A</p>
             )}
